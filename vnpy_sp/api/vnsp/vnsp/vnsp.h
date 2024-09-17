@@ -1,5 +1,6 @@
 #pragma once
 
+#include "stdafx.h"
 #include <string>
 #include <queue>
 #include <thread>
@@ -9,9 +10,15 @@
 #include <condition_variable>
 #include <locale>
 #include <windows.h>
+#include <stdio.h>
+#include <conio.h>
+#include <ctype.h>
+#include <time.h> 
 
 #include "pybind11/pybind11.h"
 #include "sp/spapidll.h"
+
+
 
 using namespace std;
 using namespace pybind11;
@@ -71,6 +78,15 @@ public:
     }
 };
 
+void getLong(const dict &d, const char *key, long *value)
+{
+    if (d.contains(key))		//检查字典中是否存在该键值
+    {
+        object o = d[key];		//获取该键值
+        *value = o.cast<long>();
+    }
+};
+
 
 //从字典中获取某个建值对应的整数，并赋值到请求结构体对象的值上
 void getInt(const dict& d, const char* key, int* value)
@@ -112,12 +128,12 @@ using string_literal = char[size];
 template <size_t size>
 void getString(const pybind11::dict& d, const char* key, string_literal<size>& value)
 {
-    if (d.contains(key))
+    if (d.contains(key)) 
     {
         object o = d[key];
         string s = o.cast<string>();
         const char* buf = s.c_str();
-        strcpy(value, buf);
+        strcpy_s(value, buf);
     }
 };
 
@@ -153,31 +169,87 @@ private:
     bool active = false;                //工作状态
 
 public:
-    SpApi()
-    {
-        api = this;
-    };
-
-    ~SpApi()
-    {
-        api = NULL;
-    };
+    SpApi();
+    ~SpApi();
 
     //-------------------------------------------------------------------------------------
     //Python回调函数
     //-------------------------------------------------------------------------------------
 
-    virtual void loginReplyAddr(string user_id, long ret_code, string ret_msg) {};
+    virtual void onLoginReply(long code) {};
+    	
+    virtual void onConnectedReply(long id,long code){};
+
+	virtual void onApiOrderRequestFailed(const dict &data, int code, char error){};
+
+	virtual void onApiOrderReport(const dict &data){};
+
+	virtual void onApiOrderBeforeSendReport(const dict &data){};
+
+	virtual void onAccountLoginReply(int code, char error){};
+
+	virtual void onAccountLogoutReply(int code, char error){};
+
+	virtual void onAccountInfoPush(const dict &data){};
+
+	virtual void onAccountPositionPush(const dict &data){};
+
+	virtual void onUpdatedAccountPositionPush(const dict &data){};
+
+	virtual void onUpdatedAccountBalancePush(const dict &data){};
+
+	virtual void onApiTradeReport(const dict &data){};
+
+	virtual void onApiPriceUpdate(const dict &data){};
+
+	virtual void onApiTickerUpdate(const dict &data){};
+
+	virtual void onInstrumentListReply(int id,char error){};
+
+	virtual void onApiMMOrderRequestFailed(const dict &data, int code, char error){};
+
+	virtual void onApiLoadTradeReadyPush(const dict &data){};
+
+	virtual void onInstrument(const dict &data){};
+
+ 	virtual void onProduct(const dict &data){};
 
     //-------------------------------------------------------------------------------------
     //Python主动函数
     //-------------------------------------------------------------------------------------
 
-    int initialize();
 
-    void setLoginInfo(string host, int port, string license, string app_id, string user_id, string password);
 
-    int login();
+    void createApi();
+
+    int login(const dict &req);
+
+    int getAPIVersion();
+
+    int loadInstrument();
+
+	void getProduct();
+	
+	void loadProductInfoListByCode(string code);
+	
+	void loadProductInfoListByMarket(string code);
+
+	void getProductByCode(string code);
+
+	void subscribeQuote(const dict &req);
+
+	int reqOrderInsert(const dict &req);
+
+	void reqOrderDelete(const dict &req);
+
+	void getAllAccBal(const dict &req);
+	
+	void getAccInfo(const dict &req);
+
+	void getAllPos(const dict &req);
+
+	void getInstrument();
+
 };
 
 
@@ -185,29 +257,31 @@ public:
 //C++回调函数
 //-------------------------------------------------------------------------------------
 
-void SPDLLCALL LoginReplyAddr(char* user_id, long ret_code, char* ret_msg);
-void SPDLLCALL ConnectedReplyAddr(long host_type, long con_status);
-void SPDLLCALL ApiOrderRequestFailedAddr(tinyint action, SPApiOrder* order, long err_code, char* err_msg);
-void SPDLLCALL ApiOrderReportAddr(long rec_no, SPApiOrder* order);
-void SPDLLCALL ApiOrderBeforeSendReportAddr(SPApiOrder* order);
-void SPDLLCALL AccountLoginReplyAddr(char* accNo, long ret_code, char* ret_msg);
-void SPDLLCALL AccountLogoutReplyAddr(char* accNo, long ret_code, char* ret_msg);
-void SPDLLCALL AccountInfoPushAddr(SPApiAccInfo* acc_info);
-void SPDLLCALL AccountPositionPushAddr(SPApiPos* pos);
-void SPDLLCALL UpdatedAccountPositionPushAddr(SPApiPos* pos);
-void SPDLLCALL UpdatedAccountBalancePushAddr(SPApiAccBal* acc_bal);
-void SPDLLCALL ApiTradeReportAddr(long rec_no, SPApiTrade* trade);
-void SPDLLCALL ApiLoadTradeReadyPushAddr(long rec_no, SPApiTrade* trade);
-void SPDLLCALL ApiPriceUpdateAddr(SPApiPrice* price);
-void SPDLLCALL ApiTickerUpdateAddr(SPApiTicker* ticker);
-void SPDLLCALL PswChangeReplyAddr(long ret_code, char* ret_msg);
-void SPDLLCALL ProductListByCodeReplyAddr(long req_id, char* inst_code, bool is_ready, char* ret_msg);
-void SPDLLCALL InstrumentListReplyAddr(long req_id, bool is_ready, char* ret_msg);
-void SPDLLCALL BusinessDateReplyAddr(long business_date);
-void SPDLLCALL ApiMMOrderBeforeSendReportAddr(SPApiMMOrder* mm_order);
-void SPDLLCALL ApiMMOrderRequestFailedAddr(SPApiMMOrder* mm_order, long err_code, char* err_msg);
-void SPDLLCALL ApiQuoteRequestReceivedAddr(char* product_code, char buy_sell, long qty);
-void SPDLLCALL AccountControlReplyAddr(long ret_code, char* ret_msg);
+void SPDLLCALL ONLoginReplyAddr(char *user_id, long ret_code, char *ret_msg);
+void SPDLLCALL ONConnectedReplyAddr(long host_type, long con_status);
+void SPDLLCALL ONApiOrderRequestFailedAddr(tinyint action, SPApiOrder* order, long err_code, char* err_msg);
+void SPDLLCALL ONApiOrderReportAddr(long rec_no, SPApiOrder* order);
+void SPDLLCALL ONApiOrderBeforeSendReportAddr(SPApiOrder* order);
+void SPDLLCALL ONAccountLoginReplyAddr(char* accNo, long ret_code, char* ret_msg);
+void SPDLLCALL ONAccountLogoutReplyAddr(char* accNo, long ret_code, char* ret_msg);
+void SPDLLCALL ONAccountInfoPushAddr(SPApiAccInfo* acc_info);
+
+void SPDLLCALL ONAccountPositionPushAddr(SPApiPos* pos);
+void SPDLLCALL ONUpdatedAccountPositionPushAddr(SPApiPos* pos);
+void SPDLLCALL ONUpdatedAccountBalancePushAddr(SPApiAccBal* acc_bal);
+void SPDLLCALL ONApiTradeReportAddr(long rec_no, SPApiTrade* trade);
+//void SPDLLCALL ONApiLoadTradeReadyPushAddr(long rec_no, SPApiTrade* trade);
+void SPDLLCALL ONApiPriceUpdateAddr(SPApiPrice* price);
+void SPDLLCALL ONApiTickerUpdateAddr(SPApiTicker* ticker);
+//void SPDLLCALL PswChangeReplyAddr(long ret_code, char* ret_msg);
+void SPDLLCALL ONProductListByCodeReplyAddr(long req_id, char *inst_code, bool is_ready, char *ret_msg);
+void SPDLLCALL ONInstrumentListReplyAddr(long req_id, bool is_ready, char* ret_msg);
+void SPDLLCALL ONBusinessDateReplyAddr(long business_date);
+void SPDLLCALL ONApiMMOrderBeforeSendReportAddr(SPApiMMOrder* mm_order);
+void SPDLLCALL ONApiMMOrderRequestFailedAddr(SPApiMMOrder* mm_order, long err_code, char* err_msg);
+void SPDLLCALL ONApiQuoteRequestReceivedAddr(char* product_code, char buy_sell, long qty);
+void SPDLLCALL ONAccountControlReplyAddr(long ret_code, char* ret_msg);
+
 
 //-------------------------------------------------------------------------------------
 //C++主动函数
@@ -313,3 +387,4 @@ p_SPAPI_SendAccControl       SPAPI_SendAccControl;
 //-------------------------------------------------------------------------------------
 
 SpApi* api;
+#pragma warning(disable:4996)
